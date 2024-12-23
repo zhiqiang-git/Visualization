@@ -3,9 +3,13 @@ import pyvista as pv
 
 def vis_3d_scalar(density, grad):  
     S = density.shape[-1]
-    line = np.linspace(0, 1, S)
-    x, y, z = np.meshgrid(line, line, line)
-    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
+    ones = np.ones(S)
+    slices = np.linspace(0, 1, S)
+    px = np.kron(ones, np.kron(ones, slices))
+    py = np.kron(ones, np.kron(slices, ones))
+    pz = np.kron(slices, np.kron(ones, ones))
+    pos = np.vstack([px.ravel(), py.ravel(), pz.ravel()]).T   
     
     density = density.ravel()
     grad = grad.ravel()
@@ -14,7 +18,7 @@ def vis_3d_scalar(density, grad):
     pos_d = pos[mask_d, :]
     density = density[mask_d]
     
-    mask_g = grad < np.percentile(grad, 1)
+    mask_g = grad < np.percentile(grad, 0.1)
     pos_g = pos[mask_g, :]
     grad = grad[mask_g]
     
@@ -24,22 +28,26 @@ def vis_3d_scalar(density, grad):
     grid_g.point_data['scalar_values'] = grad
     
     plotter = pv.Plotter()
-    plotter.add_points(grid_d, color='darkgray', point_size=4)
-    plotter.add_points(grid_g, color='cornflowerblue', point_size=4)
-     
-    Inter = 1 / (S-1)
-    test_pos = np.array([85, 110, 60])
-    test_grid = pv.PolyData(test_pos * Inter)
-    plotter.add_points(test_grid, color='red', point_size=10)
+    plotter.add_points(grid_d, color='darkgray', point_size=2)
+    plotter.add_mesh(grid_g, 
+                     scalars='scalar_values',
+                     cmap='viridis',
+                     point_size=10,
+                     render_points_as_spheres=True,
+                     show_scalar_bar=True)
     
     plotter.add_axes()
     plotter.show()
     
 def vis_3d_orientation(density, vec):
     S = density.shape[-1]
-    line = np.linspace(0, 1, S)
-    x, y, z = np.meshgrid(line, line, line)
-    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T   
+
+    ones = np.ones(S)
+    slices = np.linspace(0, 1, S)
+    px = np.kron(ones, np.kron(ones, slices))
+    py = np.kron(ones, np.kron(slices, ones))
+    pz = np.kron(slices, np.kron(ones, ones))
+    pos = np.vstack([px.ravel(), py.ravel(), pz.ravel()]).T   
     
     density = density.ravel()
     vec = vec.reshape(-1, 3)
@@ -47,6 +55,13 @@ def vis_3d_orientation(density, vec):
     pos = pos[mask, :]
     vec = vec[mask, :]
     density = density[mask]
+    
+    n_points = len(pos)
+    sample_size = n_points // 10
+    indices = np.random.choice(n_points, sample_size, replace=False)
+    pos = pos[indices, :]
+    vec = vec[indices, :]
+    density = density[indices]
     
     vec_normalized = vec / np.linalg.norm(vec, axis=1, keepdims=True)
     x = vec_normalized[:, 0]
@@ -68,7 +83,7 @@ def vis_3d_orientation(density, vec):
     glyphs = grid.glyph(
         orient='vectors',
         scale=False,
-        factor=5e-3, 
+        factor=2e-2, 
         geom=pv.Arrow(shaft_radius=0.03, tip_radius=0.05, tip_length=0.15) 
     )
 
@@ -90,9 +105,13 @@ def vis_3d_orientation(density, vec):
     
 def vis_3d_magnitude(density, vec):
     S = density.shape[-1]
-    line = np.linspace(0, 1, S)
-    x, y, z = np.meshgrid(line, line, line)
-    pos = np.vstack([x.ravel(), y.ravel(), z.ravel()]).T
+
+    ones = np.ones(S)
+    slices = np.linspace(0, 1, S)
+    px = np.kron(ones, np.kron(ones, slices))
+    py = np.kron(ones, np.kron(slices, ones))
+    pz = np.kron(slices, np.kron(ones, ones))
+    pos = np.vstack([px.ravel(), py.ravel(), pz.ravel()]).T   
     
     density = density.ravel()
     vec = vec.reshape(-1, 3)
@@ -101,41 +120,84 @@ def vis_3d_magnitude(density, vec):
     vec = vec[mask, :]
     density = density[mask]
     
-    magnitude = np.linalg.norm(vec, axis=1)
-    low_5 = np.percentile(magnitude, 5)
-    high_5 = np.percentile(magnitude, 95)
-    magnitude = np.clip(magnitude, low_5, high_5)
-    
+    n_points = len(pos)
+    sample_size = n_points // 10
+    indices = np.random.choice(n_points, sample_size, replace=False)
+    pos = pos[indices, :]
+    vec = vec[indices, :]
+    density = density[indices]
+
     grid = pv.PolyData(pos)
-    grid['vectors'] = vec
-    grid['magnitude'] = magnitude
+    grid['disp_x'] = vec[:, 0]
+    grid['disp_y'] = vec[:, 1]
+    grid['disp_z'] = vec[:, 2]
 
     plotter = pv.Plotter()
     
-    glyphs = grid.glyph(
-        orient='vectors',
-        scale=False,
-        factor=2e-3,  
-        geom=pv.Arrow(shaft_radius=0.03, tip_radius=0.05, tip_length=0.15)
+    plotter.add_mesh(grid, 
+                            scalars="disp_x", 
+                            cmap="viridis", 
+                            point_size=5, 
+                            render_points_as_spheres=True,
+                            show_scalar_bar=False)
+
+    plotter.add_scalar_bar(
+        title="Displacement X",
+        n_labels=5,
+        vertical=True,
+        position_x=0.85,
+        position_y=0.1,
+        width=0.02,
+        height=0.8
     )
     
-    plotter.add_mesh(glyphs,
-                     scalars='magnitude',
-                     cmap='viridis',
-                     show_scalar_bar=True,
-                     lighting=True)
+    directions = ['disp_x', 'disp_y', 'disp_z']
+    direction_titles = {
+        'disp_x': 'Displacement X',
+        'disp_y': 'Displacement Y',
+        'disp_z': 'Displacement Z'
+    }
+
+    current_direction = {'index': 0}
     
-    plotter.add_mesh(grid, 
-                    color='darkgray',
-                    point_size=3,
-                    render_points_as_spheres=True)
+    direction_label = plotter.add_text(
+        f"Current: {direction_titles[directions[current_direction['index']]]}",
+        position=(600, 50), 
+        font_size=12,
+        color='black'
+    )
+
+    def toggle_direction(value):
+        idx = int(round(value))
+        current_direction['index'] = idx % len(directions)
+        current_dir = directions[current_direction['index']]
+        current_title = direction_titles[current_dir]
+
+        grid.set_active_scalars(current_dir)
+
+        plotter.scalar_bar.SetTitle(current_title)
+        plotter.update_scalar_bar_range([grid[current_dir].min(), grid[current_dir].max()])
+
+        direction_label.SetInput(f"Current: {current_title}")
+
+        plotter.render()
+
+    plotter.add_slider_widget(
+        callback=toggle_direction,
+        rng=[0, 2],
+        value=0,
+        title="Select Direction",
+        style='modern',
+        pointa=(0.05, 0.9),
+        pointb=(0.25, 0.9),
+        color='lightblue'
+    )
 
     plotter.add_axes()
-    plotter.add_title("Vector Field Magnitude")
-
     plotter.show()
 
-def vis_3d_pc(vertices, force, BC):
+
+def vis_3d_pc(vertices, force, BC, title):
     mask1 = BC == 1
     mask2 = BC == 0
     vertices1 = vertices[mask1, :]
@@ -172,36 +234,39 @@ def vis_3d_pc(vertices, force, BC):
     plotter.add_mesh(glyphs2, scalars='magnitude', cmap='viridis', lighting=True)
     
     plotter.add_axes()
-    plotter.add_title("Point Cloud Force")
+    plotter.add_title(title)
     plotter.show()
     
         
 if __name__ == '__main__':
     
+    # nodes-wise info
     density_path = 'computer_chair_density.npy'
     grad_path = 'computer_chair_grad.npy'
     ur_path = 'computer_chair_ur.npy'
-    
     u_path = 'computer_chair_u.npy'
-    vertices_path = 'computer_chair_vertices.npy'
-    force_path = 'computer_chair_force.npy'
-    BC_path = 'computer_chair_BC.npy'
     
     density = np.load(density_path)
     grad = np.load(grad_path)
     ur = np.load(ur_path)
-    
     u = np.load(u_path)
-    vertices = np.load(vertices_path)
-    force = np.load(force_path)
-    BC = np.load(BC_path)
-
-    # vis_3d_scalar(density, grad)
+    
+    vis_3d_scalar(density, grad)
     # vis_3d_orientation(density, u)
     # vis_3d_orientation(density, ur)
     # vis_3d_magnitude(density, u)
     # vis_3d_magnitude(density, ur)
     
-    # vis_3d_pc(vertices, force, BC)
-
-    vis_3d_pc(vertices, u, BC)
+    # vertices-wise info
+    vu_path = 'computer_chair_vu.npy'
+    vertices_path = 'computer_chair_vertices.npy'
+    force_path = 'computer_chair_force.npy'
+    BC_path = 'computer_chair_BC.npy'
+    
+    vu = np.load(vu_path)
+    vertices = np.load(vertices_path)
+    force = np.load(force_path)
+    BC = np.load(BC_path)
+    
+    # vis_3d_pc(vertices, force, BC, title='vertices forces)
+    # vis_3d_pc(vertices, vu, BC, title='vertices displacement')
