@@ -178,22 +178,22 @@ def vis_3d_pc(vertices, force, BC):
         
 if __name__ == '__main__':
     
-    density_path = 'computer_chair_density.npy'
-    grad_path = 'computer_chair_grad.npy'
-    ur_path = 'computer_chair_ur.npy'
+    # density_path = 'computer_chair_density.npy'
+    # grad_path = 'computer_chair_grad.npy'
+    # ur_path = 'computer_chair_ur.npy'
     
     u_path = 'computer_chair_u.npy'
     vertices_path = 'computer_chair_vertices.npy'
-    force_path = 'computer_chair_force.npy'
+    # force_path = 'computer_chair_force.npy'
     BC_path = 'computer_chair_BC.npy'
     
-    density = np.load(density_path)
-    grad = np.load(grad_path)
-    ur = np.load(ur_path)
+    # density = np.load(density_path)
+    # grad = np.load(grad_path)
+    # ur = np.load(ur_path)
     
     u = np.load(u_path)
     vertices = np.load(vertices_path)
-    force = np.load(force_path)
+    # force = np.load(force_path)
     BC = np.load(BC_path)
 
     # vis_3d_scalar(density, grad)
