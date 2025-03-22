@@ -5,7 +5,7 @@ import subprocess
 ps.init()
 
 # scp_command = "scp stu4@501:~/PS/log/result_data.npz data/result_data.npz"
-scp_command = "scp zhiqiang4@qixing-ut:~/PS/log/result_data.npz data/result_data.npz"
+scp_command = "scp zhiqiang@qixing-ut:~/PS/log/result_data.npz data/result_data.npz"
 subprocess.run(scp_command, shell=True, check=True)
 
 result_data = np.load("data/result_data.npz")
